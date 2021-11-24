@@ -5,20 +5,30 @@
 
 import sys
 import copy
+import time
 import rospy
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
+from math import pi
 from std_msgs.msg import String
-from moveit_commander.conversions import pose_to_list
+import moveit_commander.conversions as conversions
+from moveit_ros_planning_interface import _moveit_move_group_interface
 
 print_details = False
+
+robot_description = "robot_description"
+ns = ""
+wait_for_servers = 5.0
 
 pose_goal = geometry_msgs.msg.Pose()
 pose_goal.orientation.w = 1.0
 pose_goal.position.x = 0.4
 pose_goal.position.y = 0.1
 pose_goal.position.z = 0.4
+
+home_joints = [0, -pi/4, 0, -pi/2, 0, pi/3, 0]
+
 
 def main_fun():
 
@@ -41,21 +51,28 @@ def main_fun():
         # This object is an interface to a planning group (group of joints)
         group_name = "panda_arm"
         move_group = moveit_commander.MoveGroupCommander(group_name)
-
-        # To display trajectories in Rviz
-        display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path', 
-            moveit_msgs.msg.DisplayTrajectory, queue_size=20)
+        move_group_interface = _moveit_move_group_interface.MoveGroupInterface(
+            group_name, robot_description, ns, wait_for_servers)
+        
+        # Get get_end_effector_link
+        end_effector = move_group_interface.get_end_effector_link()
 
         # Printout info 
         if print_details:
             display_info_fun(move_group, robot) 
 
-        # Change planning algorithm
-        move_group.set_planner_id("RRTkConfigDefault")
+        # Change planning algorithm (RRTkConfigDefault, RRTConnectkConfigDefault, RRTstarkConfigDefault)
+        move_group.set_planner_id("RRTConnectkConfigDefault")
         print("The set planner is " + move_group.get_planner_id())
 
+        # Plan and go to home joints
+        plan_go_to_joint_fun(move_group, home_joints)
+
         # Plan and go to pose
-        plan_traj_pose = plan_pose_fun(move_group, pose_goal) 
+        plan_go_to_pose_fun(move_group_interface, end_effector, pose_goal)
+
+        # Plan and go to home joints
+        plan_go_to_joint_fun(move_group, home_joints)
 
         print("Finished the node.")
 
@@ -86,16 +103,34 @@ def display_info_fun(move_group, robot):
 
 
 # Function for planing to a pose
-def plan_pose_fun(move_group, pose_goal):
+def plan_go_to_pose_fun(move_group_interface, end_effector, pose_goal):
 
-    move_group.set_pose_target(pose_goal)
-    plan = move_group.go(wait=True)
-    # Calling `stop()` ensures that there is no residual movement
-    move_group.stop()
+    move_group_interface.set_pose_target(conversions.pose_to_list(pose_goal), end_effector)
+    plan = moveit_msgs.msg.RobotTrajectory()
+
+    start_time = time.time()
+    plan.deserialize(move_group_interface.compute_plan())
+    end_time = time.time()
+    move_group_interface.execute(conversions.msg_to_string(plan))
+
+    print("The function plan took " + str(end_time - start_time) + " to plan this!")
+    # print("The motion planning algo took " + str(planned_time) + " to plan this!")
+    # plan = move_group.go(wait=True)
+    # Calling stop() ensures that there is no residual movement
+    move_group_interface.stop()
     # It is always good to clear your targets after planning with poses
-    move_group.clear_pose_targets()
+    move_group_interface.clear_pose_targets()
 
     return plan
+
+def plan_go_to_joint_fun(move_group, joint_goal):
+
+    # The go command can be called with joint values, poses, or without any
+    # parameters if you have already set the pose or joint target for the group
+    move_group.go(joint_goal, wait=True)
+
+    # Calling this ensures that there is no residual movement
+    move_group.stop()
 
 
 # MAIN
