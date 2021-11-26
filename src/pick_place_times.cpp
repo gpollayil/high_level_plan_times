@@ -105,8 +105,12 @@ void display_trajectory_visual(ros::Publisher display_publisher, const robot_sta
 
     display_trajectory.trajectory_start = response.trajectory_start;
     display_trajectory.trajectory.push_back(response.trajectory);
+
+    #ifdef RVIZ_TRAJ_LINE
     visual_tools.publishTrajectoryLine(display_trajectory.trajectory.back(), joint_model_group);
     visual_tools.trigger();
+    #endif
+
     display_publisher.publish(display_trajectory);
 
 }
@@ -126,6 +130,14 @@ void set_state_planning_scene(const robot_state::JointModelGroup* joint_model_gr
 
 }
 
+// Aux function to save planning time. If plan failed write "inf"
+void save_planning_time(planning_interface::MotionPlanResponse plan_res, std::vector<std::string> planning_times_single_it){
+    if (plan_res.error_code_.val == 1){
+        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+    } else{
+        planning_times_single_it.push_back("inf");
+    }
+}
 
 // Main
 int main(int argc, char** argv){
@@ -255,7 +267,7 @@ int main(int argc, char** argv){
 
         display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
         set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
-        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+        save_planning_time(plan_res, planning_times_single_it);
 
 
         // Second joints
@@ -265,7 +277,7 @@ int main(int argc, char** argv){
 
         display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
         set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
-        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+        save_planning_time(plan_res, planning_times_single_it);
 
 
         // Third joints
@@ -275,7 +287,7 @@ int main(int argc, char** argv){
 
         display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
         set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
-        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+        save_planning_time(plan_res, planning_times_single_it);
 
 
         // Fourth joints
@@ -285,7 +297,7 @@ int main(int argc, char** argv){
 
         display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
         set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
-        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+        save_planning_time(plan_res, planning_times_single_it);
 
 
         // Fifth joints
@@ -295,8 +307,20 @@ int main(int argc, char** argv){
 
         display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
         set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
-        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+        save_planning_time(plan_res, planning_times_single_it);
 
+
+        // Sixth joints only if UR (compare gives 0 if they compare equal)
+        if (!ROBOT_NAME.compare("UR")){
+            // Sixth joints
+            plan_req = build_joint_motion_plan_req(joints_6, joint_model_group, robot_model, PLANNING_GROUP);
+
+            plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+
+            display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+            set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+            save_planning_time(plan_res, planning_times_single_it);
+        }
 
         // Save in new row of text file
         std::ostream_iterator<std::string> output_iterator(output_file, " ");
