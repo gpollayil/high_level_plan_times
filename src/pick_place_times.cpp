@@ -3,6 +3,7 @@
 // REFERENCE: 
 // https://github.com/ros-planning/moveit_tutorials/blob/melodic-devel/doc/motion_planning_api/src/motion_planning_api_tutorial.cpp
 
+#include <sstream>
 #include <pluginlib/class_loader.h>
 #include <ros/ros.h>
 
@@ -35,13 +36,39 @@ planning_interface::MotionPlanRequest build_pose_motion_plan_req(geometry_msgs::
 
     planning_interface::MotionPlanRequest req;
     req.group_name = PLANNING_GROUP;
+    req.planner_id = PLANNER_ID;
+    req.allowed_planning_time = MAX_PLANNING_TIME;
     req.goal_constraints.push_back(pose_goal);
 
     return req;
 }
 
+// Aux function for building a joint MotionPlanRequest
+planning_interface::MotionPlanRequest build_joint_motion_plan_req(std::vector<double> joint_values,
+    const robot_state::JointModelGroup* joint_model_group, robot_model::RobotModelPtr robot_model, 
+    const std::string PLANNING_GROUP){
+
+    #ifdef DEBUG
+    ROS_INFO("Starting to building a joint MotionPlanRequest.");
+    #endif
+
+    robot_state::RobotState goal_state(robot_model);
+    goal_state.setJointGroupPositions(joint_model_group, joint_values);
+    moveit_msgs::Constraints joint_goal = 
+        kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
+
+    planning_interface::MotionPlanRequest req;
+    req.group_name = PLANNING_GROUP;
+    req.planner_id = PLANNER_ID;
+    req.allowed_planning_time = MAX_PLANNING_TIME;
+    req.goal_constraints.push_back(joint_goal);
+
+    return req;
+}
+
+
 // Aux function for planning using Planning Context
-planning_interface::MotionPlanResponse plan_for_pose(planning_interface::PlannerManagerPtr planner_instance,
+planning_interface::MotionPlanResponse plan_for_goal(planning_interface::PlannerManagerPtr planner_instance,
     planning_scene::PlanningScenePtr planning_scene, planning_interface::MotionPlanRequest req){
 
     #ifdef DEBUG
@@ -186,16 +213,28 @@ int main(int argc, char** argv) {
 
     /* PLANNING AND EXECUTING */
 
+    planning_interface::MotionPlanRequest plan_req;
+    planning_interface::MotionPlanResponse plan_res;
+
+    planning_times_single_it.clear();
+
     // First pose
-    planning_interface::MotionPlanRequest first_pose_req;
-    ROS_INFO_STREAM("The requested pose is " << first_pose );
-    first_pose_req = build_pose_motion_plan_req(first_pose, tolerance_pose,  tolerance_angle,
+    plan_req = build_pose_motion_plan_req(first_pose, tolerance_pose, tolerance_angle,
         PLANNING_GROUP, EE_LINK);
 
-    planning_interface::MotionPlanResponse first_pose_res;
-    first_pose_res = plan_for_pose(planner_instance, planning_scene,first_pose_req);
+    plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+    planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
 
-    display_trajectory_visual(display_publisher, joint_model_group, visual_tools, first_pose_res);
-    set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, first_pose_res);
+    display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+    set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+
+    // Second joints
+    plan_req = build_joint_motion_plan_req(second_joints, joint_model_group, robot_model, PLANNING_GROUP);
+
+    plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+
+    display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+    set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+
 
 }
