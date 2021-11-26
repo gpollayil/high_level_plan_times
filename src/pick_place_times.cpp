@@ -3,6 +3,7 @@
 // REFERENCE: 
 // https://github.com/ros-planning/moveit_tutorials/blob/melodic-devel/doc/motion_planning_api/src/motion_planning_api_tutorial.cpp
 
+#include <chrono>
 #include <sstream>
 #include <pluginlib/class_loader.h>
 #include <ros/ros.h>
@@ -127,7 +128,7 @@ void set_state_planning_scene(const robot_state::JointModelGroup* joint_model_gr
 
 
 // Main
-int main(int argc, char** argv) {
+int main(int argc, char** argv){
 
     const std::string node_name = "pick_place_times_node";
     ros::init(argc, argv, node_name);
@@ -136,7 +137,7 @@ int main(int argc, char** argv) {
     ros::NodeHandle node_handle("~");
 
     // Assigning the params
-    assign_params();
+    // assign_params();
 
     /* MAIN SETTING UP */
 
@@ -213,28 +214,100 @@ int main(int argc, char** argv) {
 
     /* PLANNING AND EXECUTING */
 
+    // Getting time in string
+    auto now = std::chrono::system_clock::now();
+    auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+
+    // Opening the stream to the text file and giving name with time
+    std::ofstream output_file("./" + OUTPUT_FILENAME + "_" + ROBOT_NAME + "_" + std::to_string(UTC) + ".txt");
+
+    // Creating tmp messages
     planning_interface::MotionPlanRequest plan_req;
     planning_interface::MotionPlanResponse plan_res;
 
-    planning_times_single_it.clear();
+    for (int i = 0; i < NUM_IT; i++){
 
-    // First pose
-    plan_req = build_pose_motion_plan_req(first_pose, tolerance_pose, tolerance_angle,
-        PLANNING_GROUP, EE_LINK);
+        planning_times_single_it.clear();
 
-    plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
-    planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+        // First pose
+        // plan_req = build_pose_motion_plan_req(first_pose, tolerance_pose, tolerance_angle,
+        // PLANNING_GROUP, EE_LINK);
 
-    display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
-    set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+        // plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+        // planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
 
-    // Second joints
-    plan_req = build_joint_motion_plan_req(second_joints, joint_model_group, robot_model, PLANNING_GROUP);
+        // display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+        // set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
 
-    plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+        // Home joints
+        plan_req = build_joint_motion_plan_req(home_joints, joint_model_group, robot_model, PLANNING_GROUP);
 
-    display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
-    set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+        plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
 
+        display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+        set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+
+
+        // First joints
+        plan_req = build_joint_motion_plan_req(joints_1, joint_model_group, robot_model, PLANNING_GROUP);
+
+        plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+
+        display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+        set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+
+
+        // Second joints
+        plan_req = build_joint_motion_plan_req(joints_2, joint_model_group, robot_model, PLANNING_GROUP);
+
+        plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+
+        display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+        set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+
+
+        // Third joints
+        plan_req = build_joint_motion_plan_req(joints_3, joint_model_group, robot_model, PLANNING_GROUP);
+
+        plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+
+        display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+        set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+
+
+        // Fourth joints
+        plan_req = build_joint_motion_plan_req(joints_4, joint_model_group, robot_model, PLANNING_GROUP);
+
+        plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+
+        display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+        set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+
+
+        // Fifth joints
+        plan_req = build_joint_motion_plan_req(joints_5, joint_model_group, robot_model, PLANNING_GROUP);
+
+        plan_res = plan_for_goal(planner_instance, planning_scene, plan_req);
+
+        display_trajectory_visual(display_publisher, joint_model_group, visual_tools, plan_res);
+        set_state_planning_scene(joint_model_group, robot_state, planning_scene, visual_tools, plan_res);
+        planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
+
+
+        // Save in new row of text file
+        std::ostream_iterator<std::string> output_iterator(output_file, " ");
+        std::copy(planning_times_single_it.begin(), planning_times_single_it.end(), output_iterator);
+
+        // Adding a new line
+        output_file << "\n";
+
+
+    }
+
+    return 0;
 
 }
