@@ -84,8 +84,6 @@ planning_interface::MotionPlanResponse plan_for_goal(planning_interface::Planner
         ROS_ERROR("Could not compute plan successfully");
     }
 
-    ROS_INFO_STREAM("The planning time is " << res.planning_time_ );
-
     return res;
 
 }
@@ -131,7 +129,9 @@ void set_state_planning_scene(const robot_state::JointModelGroup* joint_model_gr
 }
 
 // Aux function to save planning time. If plan failed write "inf"
-void save_planning_time(planning_interface::MotionPlanResponse plan_res, std::vector<std::string> planning_times_single_it){
+void save_planning_time(planning_interface::MotionPlanResponse plan_res, std::vector<std::string>& planning_times_single_it){
+    ROS_INFO_STREAM("The error code is " << plan_res.error_code_.val);
+    ROS_INFO_STREAM("The planning time is " << plan_res.planning_time_ );
     if (plan_res.error_code_.val == 1){
         planning_times_single_it.push_back(boost::lexical_cast<std::string>(plan_res.planning_time_));
     } else{
@@ -231,7 +231,7 @@ int main(int argc, char** argv){
     auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
 
     // Opening the stream to the text file and giving name with time
-    std::ofstream output_file("./" + OUTPUT_FILENAME + "_" + ROBOT_NAME + "_" + std::to_string(UTC) + ".txt");
+    std::ofstream output_file("./" + OUTPUT_FILENAME + "_" + ROBOT_NAME + "_" + PLANNER_ID + "_" + std::to_string(UTC) + ".txt");
 
     // Creating tmp messages
     planning_interface::MotionPlanRequest plan_req;
