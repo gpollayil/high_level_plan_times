@@ -10,7 +10,7 @@
 // Main constants
 const std::string OUTPUT_FILENAME = "plan_times";
 const std::string ROBOT_NAME = "franka";            // Attention! Just used for the output filename (franka, UR)
-const int NUM_IT = 10;                              // Number of iterations for set of actions
+const int NUM_IT = 100000;                              // Number of iterations for set of actions
 
 // Moveit params
 const std::string PLANNING_GROUP = "panda_arm";     // (panda_arm, ???)
